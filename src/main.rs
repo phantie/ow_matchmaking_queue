@@ -1,8 +1,8 @@
+#![allow(unused_variables, dead_code)]
+
 use ow_role_q::*;
 
 fn main() -> () {
-    // let rank = Role::Ranked(Rating::new(1000).unwrap());
-
     let game = OneTwoTwoGame {};
 
     let player1 = Player {
@@ -20,5 +20,7 @@ fn main() -> () {
 
     let lobby = Lobby::new(vec![player1, player2]).unwrap();
 
-    game.valid_lobby(&lobby);
+    // game.valid_lobby(&lobby);
+
+    
 }

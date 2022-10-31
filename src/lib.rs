@@ -189,12 +189,15 @@ impl Role {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Rating(u32);
 
 impl Rating {
+    pub const MAX: Self = Self(5000);
+    pub const MIN: Self = Self(0);
+
     pub fn new(value: u32) -> Option<Self> {
-        if value <= 5000 {
+        if Self(value) <= Self::MAX && Self(value) >= Self::MIN {
             Some(Self(value))
         } else {
             None
@@ -225,14 +228,12 @@ mod tests {
             Rating::new(random_rating_value())
                 .expect("must not fail because random rating value is in valid range")
         };
-        let max_rating = Rating::new(5000).unwrap();
-        let min_rating = Rating::new(0).unwrap();
 
         let player = Player {
             roles: Roles::new(
                 Role::Ranked(random_rating()),
-                Role::Ranked(max_rating),
-                Role::Ranked(min_rating),
+                Role::Ranked(Rating::MAX),
+                Role::Ranked(Rating::MIN),
             )
             .expect("all ranked, so valid comb"),
         };
@@ -251,5 +252,10 @@ mod tests {
 
     fn invalid_rating_value() {
         assert!(Rating::new(5001).is_none());
+    }
+
+    fn cmp_rating() {
+        assert!(Rating::MAX > Rating::MIN);
+        assert!(Rating::MAX == Rating::MAX);
     }
 }
