@@ -10,7 +10,6 @@ impl Queue for CasualGame {
         if !self.valid_lobby(lobby) {
             return None; // for now silently reject lobby
         }
-        let player_count = lobby.player_count();
 
         // fn merge_lobbies(lobbies: Vec<Lobby>) -> Lobby {
         //     let mut lobbies = lobbies.into_iter();
@@ -38,9 +37,17 @@ impl Queue for CasualGame {
 
         let mut select_indeces = vec![];
 
+        let mut total_indeces = 0;
+
+        // TODO improve algorithm
         for (i, lobby) in self.queue.iter().enumerate() {
+            println!(
+                "Missing volume: {}",
+                missing_team_capacity - lobby.player_count() as i32
+            );
             if missing_team_capacity - lobby.player_count() as i32 >= 0 {
-                select_indeces.push(i);
+                select_indeces.push(i - total_indeces);
+                total_indeces += 1;
                 missing_team_capacity = missing_team_capacity - lobby.player_count() as i32;
 
                 if missing_team_capacity == 0 {
@@ -56,30 +63,19 @@ impl Queue for CasualGame {
             }
         }
 
-        assert!(select_indeces.is_empty());
-
         if teams_to_form > 0 {
             return None; // cannot form a team from existing lobbies
         }
 
+        assert!(select_indeces.is_empty());
+
         let mut lobbies = vec![];
 
-        let mov = teams.first().unwrap_or(&Vec::new()).len();
-        for (indeces, cum_sum) in teams
-            .iter()
-            .zip(teams.clone().into_iter().scan(0, |acc, x| {
-                *acc += x.len();
-                Some(*acc)
-            }))
-        {
+        for indeces in teams {
             let mut team_lobbies = vec![];
 
-            for (i, index) in indeces.iter().enumerate() {
-                team_lobbies.push(
-                    self.queue
-                        .remove(index - i + mov - cum_sum)
-                        .expect("idx must be present"),
-                );
+            for index in indeces.into_iter() {
+                team_lobbies.push(self.queue.remove(index).expect("idx must be present"));
             }
 
             lobbies.push(team_lobbies);
@@ -153,16 +149,12 @@ impl Game for OneTwoTwoGame {
             let row = [tank, damage, support]
                 .into_iter()
                 .enumerate()
-                .filter(|(i, role)| role.selected())
-                .map(|(i, role)| i as u32)
+                .filter(|(_i, role)| role.selected())
+                .map(|(i, _role)| i as u32)
                 .collect::<Vec<_>>();
 
             rows.push(row);
         }
-
-        let mut combs: Vec<Vec<u32>> = vec![];
-
-        let mut indeces = vec![0; lobby.player_count()];
 
         dbg!(&rows);
 

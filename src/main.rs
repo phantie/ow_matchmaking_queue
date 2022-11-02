@@ -38,11 +38,19 @@ fn main() -> () {
     ])
     .unwrap();
 
+    let lobby3 = Lobby::new(vec![Player {
+        roles: Roles::new(Role::RatingNonApplicable, Role::NoSelect, Role::NoSelect).unwrap(),
+    }])
+    .unwrap();
+
     // game.valid_lobby(&lobby1);
 
     let r = game.feed_and_yield(&lobby1);
     let r = game.feed_and_yield(&lobby2);
     let r = game.feed_and_yield(&lobby1);
+    // let r = game.feed_and_yield(&lobby3);
+    assert!(r.is_none());
     let r = game.feed_and_yield(&lobby2);
-    dbg!(r);
+    assert!(r.is_some());
+    // dbg!(r);
 }
