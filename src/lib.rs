@@ -1,20 +1,121 @@
-#![allow(unused_variables, dead_code)]
+#![allow(unused_variables, dead_code, unused_mut)]
+use std::{collections::VecDeque, vec};
 
-use std::vec;
-
-use itertools::iproduct;
-
-pub struct Queue {}
-
-impl Queue {
-    fn enter(&mut self, lobby: &Lobby) {}
+pub trait Queue {
+    fn feed_and_yield(&mut self, lobby: &Lobby) -> Option<TwoOpposingTeams>;
 }
 
-pub struct NoLimitsGame {}
+impl Queue for CasualGame {
+    fn feed_and_yield(&mut self, lobby: &Lobby) -> Option<TwoOpposingTeams> {
+        if !self.valid_lobby(lobby) {
+            return None; // for now silently reject lobby
+        }
+        let player_count = lobby.player_count();
 
-impl Game for NoLimitsGame {
+        // fn merge_lobbies(lobbies: Vec<Lobby>) -> Lobby {
+        //     let mut lobbies = lobbies.into_iter();
+        //     let first_lobby = lobbies.next().unwrap().clone();
+
+        //     lobbies.fold(first_lobby, |acc: Lobby, other| acc.merge(&other))
+        // }
+
+        // let a = merge_lobbies(&[lobby.clone(), lobby.clone()]);
+
+        self.queue.push_back(lobby.clone());
+
+        let total_player_count_in_queue: usize =
+            self.queue.iter().map(|lobby| lobby.player_count()).sum();
+
+        if total_player_count_in_queue < self.team_player_count * 2 {
+            return None; // not enough players to form teams, no further checks required
+        }
+
+        let mut teams = vec![];
+
+        let mut teams_to_form: u32 = 2;
+
+        let mut missing_team_capacity = self.team_player_count as i32;
+
+        let mut select_indeces = vec![];
+
+        for (i, lobby) in self.queue.iter().enumerate() {
+            if missing_team_capacity - lobby.player_count() as i32 >= 0 {
+                select_indeces.push(i);
+                missing_team_capacity = missing_team_capacity - lobby.player_count() as i32;
+
+                if missing_team_capacity == 0 {
+                    teams.push(select_indeces.clone());
+                    select_indeces.clear();
+                    teams_to_form -= 1;
+                    missing_team_capacity = self.team_player_count as i32;
+
+                    if teams_to_form == 0 {
+                        break;
+                    }
+                }
+            }
+        }
+
+        assert!(select_indeces.is_empty());
+
+        if teams_to_form > 0 {
+            return None; // cannot form a team from existing lobbies
+        }
+
+        let mut lobbies = vec![];
+
+        let mov = teams.first().unwrap_or(&Vec::new()).len();
+        for (indeces, cum_sum) in teams
+            .iter()
+            .zip(teams.clone().into_iter().scan(0, |acc, x| {
+                *acc += x.len();
+                Some(*acc)
+            }))
+        {
+            let mut team_lobbies = vec![];
+
+            for (i, index) in indeces.iter().enumerate() {
+                team_lobbies.push(
+                    self.queue
+                        .remove(index - i + mov - cum_sum)
+                        .expect("idx must be present"),
+                );
+            }
+
+            lobbies.push(team_lobbies);
+        }
+
+        assert_eq!(lobbies.len(), 2);
+
+        let mut lobbies = lobbies.into_iter();
+
+        Some(TwoOpposingTeams(
+            lobbies.next().unwrap(),
+            lobbies.next().unwrap(),
+        ))
+    }
+}
+
+#[derive(Debug)]
+pub struct TwoOpposingTeams(Vec<Lobby>, Vec<Lobby>);
+
+pub struct CasualGame {
+    queue: VecDeque<Lobby>,
+    team_player_count: usize,
+}
+
+impl CasualGame {
+    pub fn new(team_player_count: usize) -> Self {
+        Self {
+            team_player_count,
+            queue: VecDeque::new(),
+        }
+    }
+}
+
+impl Game for CasualGame {
     fn valid_lobby(&self, lobby: &Lobby) -> bool {
-        true
+        lobby.player_count() <= self.team_player_count
     }
 
     fn reduced_roles_lobby(&self, lobby: &Lobby) -> Lobby {
@@ -56,7 +157,7 @@ impl Game for OneTwoTwoGame {
                 .map(|(i, role)| i as u32)
                 .collect::<Vec<_>>();
 
-            rows.push(row.into_iter().peekable());
+            rows.push(row);
         }
 
         let mut combs: Vec<Vec<u32>> = vec![];
@@ -78,7 +179,7 @@ pub trait Game {
     fn reduced_roles_lobby(&self, lobby: &Lobby) -> Lobby;
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Lobby {
     // len at least one
     players: Vec<Player>,
@@ -140,14 +241,23 @@ impl Lobby {
             },
         })
     }
+
+    fn merge(&self, other: &Self) -> Self {
+        // check for same rating, checked again in Self::new
+        assert!(!(self.rating ^ other.rating));
+        let mut joined_players = self.players.clone();
+        joined_players.append(&mut other.players.clone());
+        Self::new(joined_players)
+            .expect("merge of initially checked lobbies with the same rating must not fail")
+    }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct Player {
     pub roles: Roles,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct Roles {
     // at least one of the fields is not NoSelect
     pub tank: Role,
@@ -173,7 +283,7 @@ impl Roles {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub enum Role {
     // public rank; ranked game
     Ranked(Rating),
@@ -189,7 +299,7 @@ impl Role {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Rating(u32);
 
 impl Rating {
@@ -197,7 +307,7 @@ impl Rating {
     pub const MIN: Self = Self(0);
 
     pub fn new(value: u32) -> Option<Self> {
-        if Self(value) <= Self::MAX && Self(value) >= Self::MIN {
+        if value <= Self::MAX.0 && value >= Self::MIN.0 {
             Some(Self(value))
         } else {
             None
@@ -221,7 +331,7 @@ mod tests {
     #[test]
     fn test_create_composition() {
         let mut rng = rand::thread_rng();
-        let ratings = (0..=5000).collect::<Vec<_>>();
+        let ratings = (Rating::MIN.0..=Rating::MAX.0).collect::<Vec<_>>();
 
         let mut random_rating_value = || pick_random(&mut rng, &ratings);
         let mut random_rating = || {

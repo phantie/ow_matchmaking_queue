@@ -21,3 +21,32 @@
 // x
 // x
 // -
+
+
+// x - x     - - x
+// x - -  => x - -
+// - x -     - x -
+
+// rows - between player
+// columns - between players
+
+// A - B     - - B
+// C - -  => C - -
+// - D -     - D -
+
+A => [A B] [A C]
+B => [B A]
+C => [C A]
+// resolved, no conflicts
+D =>
+
+
+// 1 2 2
+// A - B  =>  - - B
+// C D -  =>  C - -
+// - E -      - E -
+
+
+// 2
+// A
+// B

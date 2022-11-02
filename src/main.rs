@@ -3,24 +3,46 @@
 use ow_role_q::*;
 
 fn main() -> () {
-    let game = OneTwoTwoGame {};
+    let mut game = CasualGame::new(5);
 
-    let player1 = Player {
-        roles: Roles::new(
-            Role::RatingNonApplicable,
-            Role::NoSelect,
-            Role::RatingNonApplicable,
-        )
-        .unwrap(),
-    };
+    let lobby1 = Lobby::new(vec![
+        Player {
+            roles: Roles::new(
+                Role::RatingNonApplicable,
+                Role::NoSelect,
+                Role::RatingNonApplicable,
+            )
+            .unwrap(),
+        },
+        Player {
+            roles: Roles::new(Role::RatingNonApplicable, Role::NoSelect, Role::NoSelect).unwrap(),
+        },
+        Player {
+            roles: Roles::new(Role::NoSelect, Role::RatingNonApplicable, Role::NoSelect).unwrap(),
+        },
+    ])
+    .unwrap();
 
-    let player2 = Player {
-        roles: Roles::new(Role::RatingNonApplicable, Role::NoSelect, Role::NoSelect).unwrap(),
-    };
+    let lobby2 = Lobby::new(vec![
+        Player {
+            roles: Roles::new(
+                Role::RatingNonApplicable,
+                Role::NoSelect,
+                Role::RatingNonApplicable,
+            )
+            .unwrap(),
+        },
+        Player {
+            roles: Roles::new(Role::RatingNonApplicable, Role::NoSelect, Role::NoSelect).unwrap(),
+        },
+    ])
+    .unwrap();
 
-    let lobby = Lobby::new(vec![player1, player2]).unwrap();
+    // game.valid_lobby(&lobby1);
 
-    // game.valid_lobby(&lobby);
-
-    
+    let r = game.feed_and_yield(&lobby1);
+    let r = game.feed_and_yield(&lobby2);
+    let r = game.feed_and_yield(&lobby1);
+    let r = game.feed_and_yield(&lobby2);
+    dbg!(r);
 }
