@@ -1,5 +1,3 @@
-from traceback import print_tb
-
 
 choices = \
     {
@@ -67,6 +65,12 @@ def case3():
 def take_path(tree, path):
     return take_path(tree[path[0]], path[1:]) if path else tree
 
+def try_take_path(tree, path):
+    try:
+        return take_path(tree, path)
+    except KeyError:
+        return None
+
 
 def _pick_out(result, queue):
     if len(queue) == 0:
@@ -89,6 +93,24 @@ def _pick_out(result, queue):
             # print('B3')
             return _pick_out(_result, queue[1:])
 
+def build_tree(n):
+    return {i: build_tree(n - i) for i in range(1, n + 1)} if n != 0 else {}
+
+# Best algorithm
+def _pick_out(tree_path, queue):
+    tree = choices
+
+    for i, l in enumerate(queue):
+        subtree_path = [*tree_path, l]
+        subtree = try_take_path(tree, subtree_path)
+        if subtree is None:
+            continue
+        elif subtree == {}:
+            return subtree_path
+        else:
+            if (r := _pick_out(subtree_path, queue[i + 1:])) is not None:
+                return r
+
 
 def pick_out(case):
     return _pick_out([], case)
@@ -100,18 +122,19 @@ assert pick_out([1, 1, 3, 2, 4]) == [1, 1, 3]
 assert pick_out([1, 3, 2, 4]) == [1, 4]
 assert pick_out([4, 4]) == None
 
-# print(pick_out([4, 2, 2, 1]))
-# print(pick_out([3, 4, 2, 1])) // return None
-# print(pick_out([4, 2, 1])) // return None
-
-
-def build_tree(n):
-    return {i: build_tree(n - i) for i in range(1, n + 1)} if n != 0 else {}
+assert pick_out([4, 2, 2, 1]) == [4, 1]
+assert pick_out([3, 4, 2, 1]) == [3, 2]
+assert pick_out([4, 2, 1]) == [4, 1]
+assert pick_out([5]) == [5]
+assert pick_out([4, 5, 4]) == [5]
+assert pick_out([4, 5, 4, 1]) == [4, 1]
+assert pick_out([3, 4, 5, 4, 1]) == [4, 1]
+assert pick_out([3, 3, 4, 5, 4, 1]) == [4, 1]
 
 assert build_tree(5) == choices
 
 
 
 from pprint import pprint
-pprint(build_tree(5))
+# pprint(build_tree(5))
 
