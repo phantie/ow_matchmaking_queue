@@ -1,3 +1,6 @@
+from traceback import print_tb
+
+
 choices = \
     {
         5: {},
@@ -96,4 +99,18 @@ assert pick_out(case3()) == [4, 1]
 assert pick_out([1, 1, 3, 2, 4]) == [1, 1, 3]
 assert pick_out([1, 3, 2, 4]) == [1, 4]
 assert pick_out([4, 4]) == None
+
+# print(pick_out([4, 2, 2, 1]))
+# print(pick_out([4, 2, 1]))
+
+
+def build_tree(n):
+    return {i: build_tree(n - i) for i in range(1, n + 1)} if n != 0 else {}
+
+assert build_tree(5) == choices
+
+
+
+from pprint import pprint
+pprint(build_tree(5))
 
