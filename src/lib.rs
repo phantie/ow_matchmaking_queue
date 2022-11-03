@@ -1,4 +1,5 @@
 #![allow(unused_variables, dead_code, unused_mut)]
+use std::collections::HashMap;
 use std::{collections::VecDeque, vec};
 
 pub trait Queue {
@@ -360,4 +361,21 @@ mod tests {
         assert!(Rating::MAX > Rating::MIN);
         assert!(Rating::MAX == Rating::MAX);
     }
+}
+
+#[derive(Debug)]
+pub enum Tree {
+    Child(HashMap<u32, Box<Tree>>),
+}
+
+pub fn build_tree(n: u32) -> Tree {
+    let mut h = HashMap::new();
+
+    if n != 0 {
+        for i in 1..=n {
+            h.insert(i, Box::new(build_tree(n - i)));
+        }
+    }
+
+    Tree::Child(h)
 }

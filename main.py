@@ -101,7 +101,8 @@ assert pick_out([1, 3, 2, 4]) == [1, 4]
 assert pick_out([4, 4]) == None
 
 # print(pick_out([4, 2, 2, 1]))
-# print(pick_out([4, 2, 1]))
+# print(pick_out([3, 4, 2, 1])) // return None
+# print(pick_out([4, 2, 1])) // return None
 
 
 def build_tree(n):
