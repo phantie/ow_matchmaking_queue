@@ -369,13 +369,15 @@ pub enum Tree {
 }
 
 pub fn build_tree(n: u32) -> Tree {
-    let mut h = HashMap::new();
+    let mut h: HashMap<u32, Box<Tree>>;
 
-    if n != 0 {
+    if n == 0 {
+        h = HashMap::with_capacity(0);
+    } else {
+        h = HashMap::new();
         for i in 1..=n {
             h.insert(i, Box::new(build_tree(n - i)));
         }
     }
-
     Tree::Child(h)
 }
