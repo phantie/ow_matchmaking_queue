@@ -144,7 +144,7 @@ assert resolved_path(5, [1, 1, 1])
 assert not resolved_path(5, [3, 3])
 
 # Best algorithm with no required precalculated tree
-def _pick_out(queue, tree_path, indeces, tree_nesting, start_idx, /):
+def _pick_out(queue, tree_path, indeces, tree_nesting, start_idx, reserved_indeces, /):
     # try to complete subtree from every element in order
     # return first complete subtree
     # if one subtree fails, move to another
@@ -155,23 +155,30 @@ def _pick_out(queue, tree_path, indeces, tree_nesting, start_idx, /):
     for i, l in enumerate(queue):
         subtree_path = [*tree_path, l]
 
+        idx = start_idx + i
+
+        if idx in reserved_indeces:
+            continue
+
         if not resolved_path(tree_nesting, subtree_path):
             continue
 
         if sum(subtree_path) == tree_nesting:
-            return subtree_path, [*indeces, i + start_idx]
+            return subtree_path, [*indeces, idx]
         else:
-            if (r := _pick_out(queue[i + 1:], subtree_path, [*indeces, i + start_idx], tree_nesting, start_idx + i + 1)) != FAILED:
+            if (r := _pick_out(
+                    queue[i + 1:], subtree_path, [*indeces, idx],
+                    tree_nesting, start_idx + i + 1, reserved_indeces)) != FAILED:
                 return r
 
     return FAILED
 
-def pick_out(case, tree_nesting = 5):
-    result, _indeces = _pick_out(case, [], [], tree_nesting, 0)
+def pick_out(case, tree_nesting = 5, reserved_indeces = []):
+    result, _indeces = _pick_out(case, [], [], tree_nesting, 0, reserved_indeces)
     return result
 
-def pick_out_indeces(case, tree_nesting = 5):
-    _result, indeces = _pick_out(case, [], [], tree_nesting, 0)
+def pick_out_indeces(case, tree_nesting = 5, reserved_indeces = []):
+    _result, indeces = _pick_out(case, [], [], tree_nesting, 0, reserved_indeces)
     return indeces
 
 
@@ -198,6 +205,9 @@ assert pick_out_indeces(case2()) == [0, 2]
 assert pick_out_indeces(case3()) == [0, 2]
 assert pick_out_indeces([4, 3, 4, 4, 2]) == [1, 4]
 
+assert pick_out_indeces([3, 3, 1, 2], reserved_indeces = [0]) == [1, 3]
+assert pick_out_indeces([4, 3, 3, 2], reserved_indeces = [1]) == [2, 3]
+assert pick_out([5], reserved_indeces = [0]) is None
 
 assert build_tree(5) == choices
 
