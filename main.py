@@ -169,7 +169,7 @@ def _pick_out(queue, tree_path, indeces, tree_nesting, start_idx, reserved_indec
         else:
             if (r := _pick_out(
                     queue[i + 1:], subtree_path, [*indeces, idx],
-                    tree_nesting, start_idx + i + 1, reserved_indeces)) != FAILED:
+                    tree_nesting, idx + 1, reserved_indeces)) != FAILED:
                 return r
 
     return FAILED
@@ -182,6 +182,11 @@ def pick_out_indeces(case, tree_nesting = 5, reserved_indeces = []):
     _result, indeces = _pick_out(case, [], [], tree_nesting, 0, reserved_indeces)
     return indeces
 
+
+# print(pick_out([3, 2], 5))
+# print(pick_out_indeces([3, 2], 5))
+
+# raise Exception
 
 
 assert pick_out(case1()) == [1, 1, 2, 1]

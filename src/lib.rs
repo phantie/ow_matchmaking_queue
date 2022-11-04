@@ -1,6 +1,7 @@
 #![allow(unused_variables, dead_code, unused_mut)]
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::{collections::VecDeque, vec};
+
 
 pub fn resolved_path(tree_nesting: u32, path: &[u32]) -> bool {
     assert!(path
@@ -31,59 +32,96 @@ impl Queue for CasualGame {
             return None; // not enough players to form teams, no further checks required
         }
 
-        let mut teams = vec![];
+        let mut teams: Vec<Vec<usize>> = vec![];
 
         let mut teams_to_form: u32 = 2;
 
-        let mut missing_team_capacity = self.team_player_count as i32;
+        fn _pick_out(
+            queue: &VecDeque<Lobby>,
+            tree_path: &Vec<u32>,
+            indeces: &Vec<usize>,
+            tree_nesting: u32,
+            start_idx: usize,
+            reserved_indeces: &Vec<usize>,
+        ) -> Option<(Vec<u32>, Vec<usize>)> {
+            for (i, l) in queue.iter().enumerate() {
+                // cannot pass slice of vector, so depend on start_idx and skip
+                if i < start_idx {
+                    continue;
+                }
 
-        let mut select_indeces = vec![];
+                if reserved_indeces.contains(&i) {
+                    continue;
+                }
 
-        let mut total_indeces = 0;
+                let subtree_path = [tree_path.as_slice(), &[l.player_count() as u32]].concat();
 
-        // TODO improve algorithm
-        for (i, lobby) in self.queue.iter().enumerate() {
-            println!(
-                "Missing volume: {}",
-                missing_team_capacity - lobby.player_count() as i32
-            );
-            if missing_team_capacity - lobby.player_count() as i32 >= 0 {
-                select_indeces.push(i - total_indeces);
-                total_indeces += 1;
-                missing_team_capacity = missing_team_capacity - lobby.player_count() as i32;
+                if !resolved_path(tree_nesting, &subtree_path) {
+                    continue;
+                }
 
-                if missing_team_capacity == 0 {
-                    teams.push(select_indeces.clone());
-                    select_indeces.clear();
-                    teams_to_form -= 1;
-                    missing_team_capacity = self.team_player_count as i32;
+                if subtree_path.iter().sum::<u32>() == tree_nesting {
+                    return Some((subtree_path, [indeces.as_slice(), &[i]].concat()));
+                } else {
+                    let result = _pick_out(
+                        queue,
+                        &subtree_path,
+                        &[indeces.as_slice(), &[i]].concat(),
+                        tree_nesting,
+                        start_idx + i + 1,
+                        reserved_indeces,
+                    );
 
-                    if teams_to_form == 0 {
-                        break;
+                    if result != None {
+                        return result;
                     }
                 }
             }
+            None
+        }
+
+        let mut reserved_indeces: Vec<usize> = vec![];
+
+        loop {
+            if teams_to_form == 0 {
+                break;
+            }
+
+            let result = _pick_out(&self.queue, &vec![], &vec![], 5, 0, &reserved_indeces);
+
+            match &result {
+                None => return None,
+                Some((lobby_lengths, indeces)) => {
+                    reserved_indeces.extend(indeces);
+                    teams.push(indeces.clone());
+                    teams_to_form -= 1;
+                }
+            }
+
+            dbg!(&result);
         }
 
         if teams_to_form > 0 {
             return None; // cannot form a team from existing lobbies
         }
 
-        assert!(select_indeces.is_empty());
+        assert_eq!(teams.len(), 2);
 
         let mut lobbies = vec![];
+
+        let mut s: HashSet<usize> = HashSet::new();
 
         for indeces in teams {
             let mut team_lobbies = vec![];
 
-            for index in indeces.into_iter() {
-                team_lobbies.push(self.queue.remove(index).expect("idx must be present"));
+            for index in indeces {
+                let mov = s.iter().filter(|&&v| v < index).count();
+                team_lobbies.push(self.queue.remove(index - mov).expect("idx must be present"));
+                s.insert(index);
             }
 
             lobbies.push(team_lobbies);
         }
-
-        assert_eq!(lobbies.len(), 2);
 
         let mut lobbies = lobbies.into_iter();
 

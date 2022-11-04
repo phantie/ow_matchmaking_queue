@@ -48,12 +48,17 @@ fn main() -> () {
     let r = game.feed_and_yield(&lobby1);
     let r = game.feed_and_yield(&lobby2);
     let r = game.feed_and_yield(&lobby1);
-    // let r = game.feed_and_yield(&lobby3);
-    assert!(r.is_none());
     let r = game.feed_and_yield(&lobby2);
+    // let r = game.feed_and_yield(&lobby1);
     assert!(r.is_some());
+
+    dbg!(r);
+    // let r = game.feed_and_yield(&lobby3);
+    // assert!(r.is_none());
+    // let r = game.feed_and_yield(&lobby2);
+    // assert!(r.is_some());
     // dbg!(r);
 
     let t = build_tree(3);
-    dbg!(t);
+    // dbg!(t);
 }
