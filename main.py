@@ -149,6 +149,7 @@ def _pick_out(queue, tree_path, indeces, tree_nesting, start_idx, reserved_indec
     # return first complete subtree
     # if one subtree fails, move to another
     # if all subtrees fail to complete, return None
+    # skip reserved indeces
 
     FAILED = (None, None)
 

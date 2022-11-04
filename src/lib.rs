@@ -2,26 +2,27 @@
 use std::collections::HashMap;
 use std::{collections::VecDeque, vec};
 
+pub fn resolved_path(tree_nesting: u32, path: &[u32]) -> bool {
+    assert!(path
+        .iter()
+        .all(|&path_node| path_node >= 1 && path_node <= tree_nesting));
+    assert!(path.len() > 0);
+    path.into_iter().sum::<u32>() <= tree_nesting
+}
+
 pub trait Queue {
+    fn feed(&mut self, lobby: &Lobby);
     fn feed_and_yield(&mut self, lobby: &Lobby) -> Option<TwoOpposingTeams>;
 }
 
 impl Queue for CasualGame {
-    fn feed_and_yield(&mut self, lobby: &Lobby) -> Option<TwoOpposingTeams> {
-        if !self.valid_lobby(lobby) {
-            return None; // for now silently reject lobby
-        }
-
-        // fn merge_lobbies(lobbies: Vec<Lobby>) -> Lobby {
-        //     let mut lobbies = lobbies.into_iter();
-        //     let first_lobby = lobbies.next().unwrap().clone();
-
-        //     lobbies.fold(first_lobby, |acc: Lobby, other| acc.merge(&other))
-        // }
-
-        // let a = merge_lobbies(&[lobby.clone(), lobby.clone()]);
-
+    fn feed(&mut self, lobby: &Lobby) {
+        assert!(self.valid_lobby(lobby));
         self.queue.push_back(lobby.clone());
+    }
+
+    fn feed_and_yield(&mut self, lobby: &Lobby) -> Option<TwoOpposingTeams> {
+        self.feed(lobby);
 
         let total_player_count_in_queue: usize =
             self.queue.iter().map(|lobby| lobby.player_count()).sum();
@@ -132,12 +133,6 @@ impl Game for OneTwoTwoGame {
             return true;
         } else if lobby.player_count() > 5 {
             return false;
-        }
-
-        enum Role {
-            T,
-            D,
-            S,
         }
 
         let mut rows = vec![];
@@ -360,6 +355,13 @@ mod tests {
     fn cmp_rating() {
         assert!(Rating::MAX > Rating::MIN);
         assert!(Rating::MAX == Rating::MAX);
+    }
+
+    fn resolve_paths() {
+        assert!(resolved_path(5, &[5]));
+        assert!(resolved_path(5, &[1, 1, 1, 1, 1]));
+        assert!(resolved_path(5, &[1, 1, 1]));
+        assert!(!resolved_path(5, &[3, 3]));
     }
 }
 
