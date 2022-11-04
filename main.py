@@ -131,7 +131,7 @@ def resolved_path(tree_nesting, path):
     return True
 
 
-# cleanest
+# cleaner
 def resolved_path(tree_nesting, path):
     assert all(1 <= node <= tree_nesting for node in path)
     assert len(path) > 0
@@ -144,11 +144,13 @@ assert resolved_path(5, [1, 1, 1])
 assert not resolved_path(5, [3, 3])
 
 # Best algorithm with no required precalculated tree
-def _pick_out(tree_nesting, tree_path, queue, indeces, start_idx, /):
+def _pick_out(queue, tree_path, indeces, tree_nesting, start_idx, /):
     # try to complete subtree from every element in order
-    # return first subtree to complete
+    # return first complete subtree
     # if one subtree fails, move to another
     # if all subtrees fail to complete, return None
+
+    FAILED = (None, None)
 
     for i, l in enumerate(queue):
         subtree_path = [*tree_path, l]
@@ -157,19 +159,19 @@ def _pick_out(tree_nesting, tree_path, queue, indeces, start_idx, /):
             continue
 
         if sum(subtree_path) == tree_nesting:
-            return (subtree_path, [*indeces, i + start_idx])
+            return subtree_path, [*indeces, i + start_idx]
         else:
-            if (r := _pick_out(tree_nesting, subtree_path, queue[i + 1:], [*indeces, i + start_idx], start_idx + i + 1)) != (None, None):
+            if (r := _pick_out(queue[i + 1:], subtree_path, [*indeces, i + start_idx], tree_nesting, start_idx + i + 1)) != FAILED:
                 return r
 
-    return (None, None)
+    return FAILED
 
 def pick_out(case, tree_nesting = 5):
-    result, indeces = _pick_out(tree_nesting, [], case, [], 0)
+    result, _indeces = _pick_out(case, [], [], tree_nesting, 0)
     return result
 
 def pick_out_indeces(case, tree_nesting = 5):
-    result, indeces = _pick_out(tree_nesting, [], case, [], 0)
+    _result, indeces = _pick_out(case, [], [], tree_nesting, 0)
     return indeces
 
 
