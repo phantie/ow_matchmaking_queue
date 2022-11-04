@@ -93,8 +93,13 @@ def _pick_out(result, queue):
             # print('B3')
             return _pick_out(_result, queue[1:])
 
+def pick_out(case):
+    return _pick_out([], case)
+
+
 def build_tree(n):
     return {i: build_tree(n - i) for i in range(1, n + 1)} if n != 0 else {}
+
 
 # Best algorithm
 def _pick_out(tree_path, queue):
@@ -106,6 +111,50 @@ def _pick_out(tree_path, queue):
         if subtree is None:
             continue
         elif subtree == {}:
+            return subtree_path
+        else:
+            if (r := _pick_out(subtree_path, queue[i + 1:])) is not None:
+                return r
+
+def pick_out(case):
+    return _pick_out([], case)
+
+
+def resolved_path(tree_nesting, path):
+    total = tree_nesting
+    for path_node in path:
+        assert path_node <= tree_nesting
+        if total - path_node >= 0:
+            total -= path_node
+        else: # total - path_node < 0
+            return False
+    return True
+
+
+# cleanest
+def resolved_path(tree_nesting, path):
+    assert all(1 <= node <= tree_nesting for node in path)
+    assert sum(path) >= 0
+    return sum(path) <= tree_nesting
+
+
+assert resolved_path(5, [5])
+assert resolved_path(5, [1, 1, 1, 1, 1])
+assert resolved_path(5, [1, 1, 1])
+assert not resolved_path(5, [3, 3])
+
+
+# Best algorithm with no required precalculated tree
+def _pick_out(tree_path, queue):
+    tree_nesting = 5
+
+    for i, l in enumerate(queue):
+        subtree_path = [*tree_path, l]
+        subtree = resolved_path(tree_nesting, subtree_path)
+
+        if not subtree:
+            continue
+        elif sum(subtree_path) == tree_nesting:
             return subtree_path
         else:
             if (r := _pick_out(subtree_path, queue[i + 1:])) is not None:
