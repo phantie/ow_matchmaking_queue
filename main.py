@@ -145,24 +145,21 @@ assert not resolved_path(5, [3, 3])
 
 
 # Best algorithm with no required precalculated tree
-def _pick_out(tree_path, queue):
-    tree_nesting = 5
-
+def _pick_out(tree_nesting, tree_path, queue):
     for i, l in enumerate(queue):
         subtree_path = [*tree_path, l]
-        subtree = resolved_path(tree_nesting, subtree_path)
 
-        if not subtree:
+        if not resolved_path(tree_nesting, subtree_path):
             continue
         elif sum(subtree_path) == tree_nesting:
             return subtree_path
         else:
-            if (r := _pick_out(subtree_path, queue[i + 1:])) is not None:
+            if (r := _pick_out(tree_nesting, subtree_path, queue[i + 1:])) is not None:
                 return r
 
 
-def pick_out(case):
-    return _pick_out([], case)
+def pick_out(case, tree_nesting = 5):
+    return _pick_out(tree_nesting, [], case)
 
 assert pick_out(case1()) == [1, 1, 2, 1]
 assert pick_out(case2()) == [3, 2]
