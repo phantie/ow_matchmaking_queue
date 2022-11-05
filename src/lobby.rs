@@ -12,8 +12,8 @@ pub struct Lobby {
 }
 
 impl Lobby {
-    pub fn player_count(&self) -> usize {
-        self.players.len()
+    pub fn player_count(&self) -> u32 {
+        self.players.len() as u32
     }
 
     pub fn empty(&self) -> bool {

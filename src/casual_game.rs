@@ -33,9 +33,12 @@ impl Queue for CasualGame {
     }
 
     fn take(&mut self, team_sizes: &[u32]) -> Option<Vec<Vec<Lobby>>> {
-        let total_player_amount_in_queue: usize =
-            self.queue.iter().map(|lobby| lobby.player_count()).sum();
-        let least_req_player_amount = team_sizes.iter().sum::<u32>() as usize;
+        let total_player_amount_in_queue = self
+            .queue
+            .iter()
+            .map(|lobby| lobby.player_count())
+            .sum::<u32>();
+        let least_req_player_amount = team_sizes.iter().sum::<u32>();
         if total_player_amount_in_queue < least_req_player_amount {
             return None; // not enough players to form teams, no further checks required
         }
@@ -65,7 +68,7 @@ impl Queue for CasualGame {
                     continue;
                 }
 
-                let subtree_path = [tree_path.as_slice(), &[l.player_count() as u32]].concat();
+                let subtree_path = [tree_path.as_slice(), &[l.player_count()]].concat();
 
                 match resolved_path(tree_nesting, &subtree_path) {
                     PathResolution::Nil => continue,
@@ -192,6 +195,16 @@ mod tests {
         Lobby::new(players).unwrap()
     }
 
+    fn assert_take_happy_path(game: &mut CasualGame, team_sizes: &[u32]) {
+        let r = game.take(team_sizes);
+        assert!(r.is_some());
+        let r = r.unwrap();
+        assert_eq!(r.len(), team_sizes.len());
+        assert!(r.iter().zip(team_sizes).all(|(team, team_size)| {
+            team.iter().map(|lobby| lobby.player_count()).sum::<u32>() == *team_size
+        }));
+    }
+
     #[test]
     fn test_casual_game() {
         let mut game = CasualGame::new();
@@ -202,7 +215,7 @@ mod tests {
         game.feed(&gen_default_player_lobby(1));
 
         assert!(game.queue.len() == 4);
-        assert!(game.take(&[5, 5]).is_some());
+        assert_take_happy_path(&mut game, &[5, 5]);
         assert!(game.queue.len() == 0);
     }
 }
