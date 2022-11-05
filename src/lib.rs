@@ -3,6 +3,7 @@ use std::collections::{HashMap, HashSet};
 use std::{collections::VecDeque, vec};
 
 pub fn resolved_path(tree_nesting: u32, path: &[u32]) -> bool {
+    // TODO remove this requirement for more flexibility
     assert!(path
         .iter()
         .all(|&path_node| path_node >= 1 && path_node <= tree_nesting));
@@ -12,7 +13,7 @@ pub fn resolved_path(tree_nesting: u32, path: &[u32]) -> bool {
 
 pub trait Queue {
     fn feed(&mut self, lobby: &Lobby);
-    fn feed_and_yield(&mut self, lobby: &Lobby) -> Option<Vec<Vec<Lobby>>>;
+    fn take(&mut self, team_sizes: &[u32]) -> Option<Vec<Vec<Lobby>>>;
 }
 
 impl Queue for CasualGame {
@@ -21,19 +22,15 @@ impl Queue for CasualGame {
         self.queue.push_back(lobby.clone());
     }
 
-    fn feed_and_yield(&mut self, lobby: &Lobby) -> Option<Vec<Vec<Lobby>>> {
-        self.feed(lobby);
-
-        let total_player_count_in_queue: usize =
+    fn take(&mut self, team_sizes: &[u32]) -> Option<Vec<Vec<Lobby>>> {
+        let total_player_amount_in_queue: usize =
             self.queue.iter().map(|lobby| lobby.player_count()).sum();
-
-        if total_player_count_in_queue < self.team_player_count * 2 {
+        let least_req_player_amount = team_sizes.iter().sum::<u32>() as usize;
+        if total_player_amount_in_queue < least_req_player_amount {
             return None; // not enough players to form teams, no further checks required
         }
 
         let mut teams: Vec<Vec<usize>> = vec![];
-
-        let mut teams_to_form: u32 = 2;
 
         fn _pick_out(
             queue: &VecDeque<Lobby>,
@@ -81,30 +78,28 @@ impl Queue for CasualGame {
 
         let mut reserved_indeces: Vec<usize> = vec![];
 
-        loop {
-            if teams_to_form == 0 {
-                break;
-            }
-
-            let result = _pick_out(&self.queue, &vec![], &vec![], 5, 0, &reserved_indeces);
+        for team_size in team_sizes {
+            let result = _pick_out(
+                &self.queue,
+                &vec![],
+                &vec![],
+                *team_size,
+                0,
+                &reserved_indeces,
+            );
 
             match &result {
-                None => return None,
+                None => return None, // cannot form requested teams from existing lobbies
                 Some((lobby_lengths, indeces)) => {
                     reserved_indeces.extend(indeces);
                     teams.push(indeces.clone());
-                    teams_to_form -= 1;
                 }
             }
 
             // dbg!(&result);
         }
 
-        if teams_to_form > 0 {
-            return None; // cannot form a team from existing lobbies
-        }
-
-        assert_eq!(teams.len(), 2);
+        assert_eq!(teams.len(), team_sizes.len());
 
         let mut lobbies = vec![];
 
@@ -128,13 +123,11 @@ impl Queue for CasualGame {
 
 pub struct CasualGame {
     queue: VecDeque<Lobby>,
-    team_player_count: usize,
 }
 
 impl CasualGame {
-    pub fn new(team_player_count: usize) -> Self {
+    pub fn new() -> Self {
         Self {
-            team_player_count,
             queue: VecDeque::new(),
         }
     }
@@ -142,7 +135,7 @@ impl CasualGame {
 
 impl Game for CasualGame {
     fn valid_lobby(&self, lobby: &Lobby) -> bool {
-        lobby.player_count() <= self.team_player_count
+        true
     }
 
     fn reduced_roles_lobby(&self, lobby: &Lobby) -> Lobby {
@@ -274,6 +267,19 @@ pub struct Player {
     pub roles: Roles,
 }
 
+impl Default for Player {
+    fn default() -> Self {
+        Self {
+            roles: Roles::new(
+                Role::RatingNonApplicable,
+                Role::RatingNonApplicable,
+                Role::RatingNonApplicable,
+            )
+            .unwrap(),
+        }
+    }
+}
+
 #[derive(Debug, Copy, Clone)]
 pub struct Roles {
     // at least one of the fields is not NoSelect
@@ -373,24 +379,49 @@ mod tests {
         assert!(Lobby::new(vec![]).is_none());
     }
 
+    #[test]
     fn no_roles_selected() {
         assert!(Roles::new(Role::NoSelect, Role::NoSelect, Role::NoSelect).is_none());
     }
 
+    #[test]
     fn invalid_rating_value() {
         assert!(Rating::new(5001).is_none());
     }
 
+    #[test]
     fn cmp_rating() {
         assert!(Rating::MAX > Rating::MIN);
         assert!(Rating::MAX == Rating::MAX);
     }
 
+    #[test]
     fn resolve_paths() {
         assert!(resolved_path(5, &[5]));
         assert!(resolved_path(5, &[1, 1, 1, 1, 1]));
         assert!(resolved_path(5, &[1, 1, 1]));
         assert!(!resolved_path(5, &[3, 3]));
+    }
+
+    fn gen_default_player_lobby(player_number: u32) -> Lobby {
+        let players = (0..player_number)
+            .map(|_| Player::default())
+            .collect::<Vec<_>>();
+        Lobby::new(players).unwrap()
+    }
+
+    #[test]
+    fn test_casual_game() {
+        let mut game = CasualGame::new();
+
+        game.feed(&gen_default_player_lobby(4));
+        game.feed(&gen_default_player_lobby(3));
+        game.feed(&gen_default_player_lobby(2));
+        game.feed(&gen_default_player_lobby(1));
+
+        assert!(game.queue.len() == 4);
+        assert!(game.take(&[5, 5]).is_some());
+        assert!(game.queue.len() == 0);
     }
 }
 

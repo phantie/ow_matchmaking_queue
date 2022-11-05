@@ -3,7 +3,7 @@
 use ow_role_q::*;
 
 fn main() -> () {
-    let mut game = CasualGame::new(5);
+    let mut game = CasualGame::new();
 
     let lobby1 = Lobby::new(vec![
         Player {
@@ -45,17 +45,19 @@ fn main() -> () {
 
     // game.valid_lobby(&lobby1);
 
-    let r = game.feed_and_yield(&lobby1);
-    let r = game.feed_and_yield(&lobby2);
-    let r = game.feed_and_yield(&lobby1);
-    let r = game.feed_and_yield(&lobby2);
-    // let r = game.feed_and_yield(&lobby1);
+    // game.feed(&lobby1);
+    game.feed(&lobby2);
+    // game.feed(&lobby1);
+    game.feed(&lobby2);
+    // let r = game.take(&lobby1);
+    // let r = game.take(&[5, 5]);
+    let r = game.take(&[2]);
     assert!(r.is_some());
 
     dbg!(r);
-    // let r = game.feed_and_yield(&lobby3);
+    // let r = game.take(&lobby3);
     // assert!(r.is_none());
-    // let r = game.feed_and_yield(&lobby2);
+    // let r = game.take(&lobby2);
     // assert!(r.is_some());
     // dbg!(r);
 
