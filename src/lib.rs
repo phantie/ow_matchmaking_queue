@@ -1,14 +1,25 @@
 #![allow(unused_variables, dead_code, unused_mut)]
 use std::collections::{HashMap, HashSet};
-use std::{collections::VecDeque, vec};
+use std::{cmp::Ordering, collections::VecDeque, vec};
 
-pub fn resolved_path(tree_nesting: u32, path: &[u32]) -> bool {
+pub enum PathResolution {
+    Complete,
+    Incomplete,
+    Nil,
+}
+
+pub fn resolved_path(tree_nesting: u32, path: &[u32]) -> PathResolution {
     // TODO remove this requirement for more flexibility
     assert!(path
         .iter()
         .all(|&path_node| path_node >= 1 && path_node <= tree_nesting));
     assert!(path.len() > 0);
-    path.into_iter().sum::<u32>() <= tree_nesting
+
+    match path.into_iter().sum::<u32>().cmp(&tree_nesting) {
+        Ordering::Greater => PathResolution::Nil,
+        Ordering::Less => PathResolution::Incomplete,
+        Ordering::Equal => PathResolution::Complete,
+    }
 }
 
 pub trait Queue {
@@ -52,24 +63,24 @@ impl Queue for CasualGame {
 
                 let subtree_path = [tree_path.as_slice(), &[l.player_count() as u32]].concat();
 
-                if !resolved_path(tree_nesting, &subtree_path) {
-                    continue;
-                }
+                match resolved_path(tree_nesting, &subtree_path) {
+                    PathResolution::Nil => continue,
+                    PathResolution::Complete => {
+                        return Some((subtree_path, [indeces.as_slice(), &[i]].concat()))
+                    }
+                    PathResolution::Incomplete => {
+                        let result = _pick_out(
+                            queue,
+                            &subtree_path,
+                            &[indeces.as_slice(), &[i]].concat(),
+                            tree_nesting,
+                            start_idx + i + 1,
+                            reserved_indeces,
+                        );
 
-                if subtree_path.iter().sum::<u32>() == tree_nesting {
-                    return Some((subtree_path, [indeces.as_slice(), &[i]].concat()));
-                } else {
-                    let result = _pick_out(
-                        queue,
-                        &subtree_path,
-                        &[indeces.as_slice(), &[i]].concat(),
-                        tree_nesting,
-                        start_idx + i + 1,
-                        reserved_indeces,
-                    );
-
-                    if result != None {
-                        return result;
+                        if result != None {
+                            return result;
+                        }
                     }
                 }
             }
@@ -397,10 +408,16 @@ mod tests {
 
     #[test]
     fn resolve_paths() {
-        assert!(resolved_path(5, &[5]));
-        assert!(resolved_path(5, &[1, 1, 1, 1, 1]));
-        assert!(resolved_path(5, &[1, 1, 1]));
-        assert!(!resolved_path(5, &[3, 3]));
+        assert!(matches!(resolved_path(5, &[5]), PathResolution::Complete));
+        assert!(matches!(
+            resolved_path(5, &[1, 1, 1, 1, 1]),
+            PathResolution::Complete
+        ));
+        assert!(matches!(
+            resolved_path(5, &[1, 1, 1]),
+            PathResolution::Incomplete
+        ));
+        assert!(matches!(resolved_path(5, &[3, 3]), PathResolution::Nil));
     }
 
     fn gen_default_player_lobby(player_number: u32) -> Lobby {
