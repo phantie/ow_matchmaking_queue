@@ -2,7 +2,6 @@
 use std::collections::{HashMap, HashSet};
 use std::{collections::VecDeque, vec};
 
-
 pub fn resolved_path(tree_nesting: u32, path: &[u32]) -> bool {
     assert!(path
         .iter()
@@ -13,7 +12,7 @@ pub fn resolved_path(tree_nesting: u32, path: &[u32]) -> bool {
 
 pub trait Queue {
     fn feed(&mut self, lobby: &Lobby);
-    fn feed_and_yield(&mut self, lobby: &Lobby) -> Option<TwoOpposingTeams>;
+    fn feed_and_yield(&mut self, lobby: &Lobby) -> Option<Vec<Vec<Lobby>>>;
 }
 
 impl Queue for CasualGame {
@@ -22,7 +21,7 @@ impl Queue for CasualGame {
         self.queue.push_back(lobby.clone());
     }
 
-    fn feed_and_yield(&mut self, lobby: &Lobby) -> Option<TwoOpposingTeams> {
+    fn feed_and_yield(&mut self, lobby: &Lobby) -> Option<Vec<Vec<Lobby>>> {
         self.feed(lobby);
 
         let total_player_count_in_queue: usize =
@@ -98,7 +97,7 @@ impl Queue for CasualGame {
                 }
             }
 
-            dbg!(&result);
+            // dbg!(&result);
         }
 
         if teams_to_form > 0 {
@@ -123,17 +122,9 @@ impl Queue for CasualGame {
             lobbies.push(team_lobbies);
         }
 
-        let mut lobbies = lobbies.into_iter();
-
-        Some(TwoOpposingTeams(
-            lobbies.next().unwrap(),
-            lobbies.next().unwrap(),
-        ))
+        Some(lobbies)
     }
 }
-
-#[derive(Debug)]
-pub struct TwoOpposingTeams(Vec<Lobby>, Vec<Lobby>);
 
 pub struct CasualGame {
     queue: VecDeque<Lobby>,
