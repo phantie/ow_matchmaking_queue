@@ -1,6 +1,7 @@
 #![allow(unused_variables, dead_code)]
 
-use ow_role_q::*;
+use ow_role_q::casual_game::*;
+use ow_role_q::prelude::*;
 
 fn main() -> () {
     let mut game = CasualGame::new();
@@ -61,7 +62,4 @@ fn main() -> () {
     // let r = game.take(&lobby2);
     // assert!(r.is_some());
     // dbg!(r);
-
-    let t = build_tree(3);
-    // dbg!(t);
 }
