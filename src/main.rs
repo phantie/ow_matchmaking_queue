@@ -46,11 +46,12 @@ fn main() -> () {
     // game.valid_lobby(&lobby1);
 
     // game.feed(&lobby1);
-    game.feed(&lobby2);
+    game.feed_priority(&lobby2);
     // game.feed(&lobby1);
-    game.feed(&lobby2);
+    game.feed_priority(&lobby2);
     // let r = game.take(&lobby1);
     // let r = game.take(&[5, 5]);
+    let r = game.take(&[2]);
     let r = game.take(&[2]);
     assert!(r.is_some());
 

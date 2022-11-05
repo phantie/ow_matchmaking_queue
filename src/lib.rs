@@ -24,6 +24,7 @@ pub fn resolved_path(tree_nesting: u32, path: &[u32]) -> PathResolution {
 
 pub trait Queue {
     fn feed(&mut self, lobby: &Lobby);
+    fn feed_priority(&mut self, lobby: &Lobby);
     fn take(&mut self, team_sizes: &[u32]) -> Option<Vec<Vec<Lobby>>>;
 }
 
@@ -31,6 +32,14 @@ impl Queue for CasualGame {
     fn feed(&mut self, lobby: &Lobby) {
         assert!(self.valid_lobby(lobby));
         self.queue.push_back(lobby.clone());
+    }
+
+    // TODO test feature
+    // priority queue as part of a matchmaking queue
+    fn feed_priority(&mut self, lobby: &Lobby) {
+        assert!(self.valid_lobby(lobby));
+        self.queue.insert(self.priority_idx, lobby.clone());
+        self.priority_idx += 1;
     }
 
     fn take(&mut self, team_sizes: &[u32]) -> Option<Vec<Vec<Lobby>>> {
@@ -123,6 +132,10 @@ impl Queue for CasualGame {
                 let mov = s.iter().filter(|&&v| v < index).count();
                 team_lobbies.push(self.queue.remove(index - mov).expect("idx must be present"));
                 s.insert(index);
+
+                if index < self.priority_idx {
+                    self.priority_idx -= 1;
+                }
             }
 
             lobbies.push(team_lobbies);
@@ -134,12 +147,15 @@ impl Queue for CasualGame {
 
 pub struct CasualGame {
     queue: VecDeque<Lobby>,
+    // delimiter for priority part of a queue
+    pub priority_idx: usize,
 }
 
 impl CasualGame {
     pub fn new() -> Self {
         Self {
             queue: VecDeque::new(),
+            priority_idx: 0,
         }
     }
 }
