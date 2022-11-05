@@ -6,7 +6,7 @@ use crate::prelude::*;
 pub struct CasualGame {
     queue: VecDeque<Lobby>,
     // delimiter for priority part of a queue
-    pub priority_idx: usize,
+    priority_idx: usize,
 }
 
 impl CasualGame {
@@ -42,8 +42,6 @@ impl Queue for CasualGame {
         if total_player_amount_in_queue < least_req_player_amount {
             return None; // not enough players to form teams, no further checks required
         }
-
-        let mut teams: Vec<Vec<usize>> = vec![];
 
         // try to complete subtree from every element in order
         // return first complete subtree
@@ -94,6 +92,7 @@ impl Queue for CasualGame {
             None
         }
 
+        let mut teams: Vec<Vec<usize>> = vec![];
         let mut reserved_indeces: Vec<usize> = vec![];
 
         for team_size in team_sizes {
@@ -196,9 +195,12 @@ mod tests {
     }
 
     fn assert_take_happy_path(game: &mut CasualGame, team_sizes: &[u32]) {
+        let initial_queue_len = game.queue.len();
         let r = game.take(team_sizes);
         assert!(r.is_some());
         let r = r.unwrap();
+        let taken_out_lobby_count = r.iter().flatten().count();
+        assert_eq!(game.queue.len(), initial_queue_len - taken_out_lobby_count);
         assert_eq!(r.len(), team_sizes.len());
         assert!(r.iter().zip(team_sizes).all(|(team, team_size)| {
             team.iter().map(|lobby| lobby.player_count()).sum::<u32>() == *team_size
@@ -213,9 +215,32 @@ mod tests {
         game.feed(&gen_default_player_lobby(3));
         game.feed(&gen_default_player_lobby(2));
         game.feed(&gen_default_player_lobby(1));
+        // 4 3 2 1
+        
+        assert_take_happy_path(&mut game, &[5, 5]); // -> [4 1] [3 2]
+        // empty
+        
+        game.feed(&gen_default_player_lobby(3));
+        game.feed(&gen_default_player_lobby(4));
+        game.feed(&gen_default_player_lobby(4));
+        game.feed(&gen_default_player_lobby(1));
+        // 3 4 4 1
 
-        assert!(game.queue.len() == 4);
-        assert_take_happy_path(&mut game, &[5, 5]);
-        assert!(game.queue.len() == 0);
+        assert_take_happy_path(&mut game, &[5]); // -> [4 1]
+        // 3 4
+
+        game.feed(&gen_default_player_lobby(2));
+        // 3 4 2
+
+        assert_take_happy_path(&mut game, &[5]); // -> [3 2]
+        // 4
+
+        game.feed(&gen_default_player_lobby(1));
+        // 4 1
+
+        assert_take_happy_path(&mut game, &[5]); // -> [4 1]
+        // empty
+
+        assert!(game.queue.is_empty());
     }
 }
