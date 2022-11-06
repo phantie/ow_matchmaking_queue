@@ -54,7 +54,7 @@ impl Queue for CasualGame {
             indeces: &Vec<usize>,
             tree_nesting: u32,
             start_idx: usize,
-            reserved_indeces: &Vec<usize>,
+            reserved_indeces: &HashSet<usize>,
         ) -> Option<(Vec<u32>, Vec<usize>)> {
             for (i, l) in queue.iter().enumerate() {
                 // cannot pass slice of vector, so depend on start_idx and skip
@@ -93,7 +93,7 @@ impl Queue for CasualGame {
         }
 
         let mut teams: Vec<Vec<usize>> = vec![];
-        let mut reserved_indeces: Vec<usize> = vec![];
+        let mut reserved_indeces = HashSet::new();
 
         for team_size in team_sizes {
             let result = _pick_out(
