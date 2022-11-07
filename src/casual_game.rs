@@ -4,6 +4,7 @@ use std::{cmp::Ordering, collections::VecDeque, vec};
 use crate::prelude::*;
 
 pub struct CasualGame {
+    rating: bool,
     queue: VecDeque<Lobby>,
     // delimiter for priority part of a queue
     priority_idx: usize,
@@ -14,7 +15,12 @@ impl CasualGame {
         Self {
             queue: VecDeque::new(),
             priority_idx: 0,
+            rating: false
         }
+    }
+
+    pub fn rating(&mut self) {
+        self.rating = true;
     }
 }
 
@@ -161,7 +167,11 @@ fn resolved_path(tree_nesting: u32, path: &[u32]) -> PathResolution {
 }
 
 impl Game for CasualGame {
-    fn valid_lobby(&self, _lobby: &Lobby) -> bool {
+    fn valid_lobby(&self, lobby: &Lobby) -> bool {
+        if self.rating ^ lobby.rating { // do not have same value
+            return false
+        }
+
         true
     }
 
@@ -210,6 +220,7 @@ mod tests {
     #[test]
     fn test_casual_game() {
         let mut game = CasualGame::new();
+        // game.rating();
 
         game.feed(&gen_default_player_lobby(4));
         game.feed(&gen_default_player_lobby(3));

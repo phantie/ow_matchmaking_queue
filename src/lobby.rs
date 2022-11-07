@@ -8,7 +8,7 @@ use crate::roles::{Role, Roles};
 pub struct Lobby {
     // len at least one
     pub players: Vec<Player>,
-    rating: bool,
+    pub rating: bool,
 }
 
 impl Lobby {
@@ -92,7 +92,7 @@ mod tests {
     #[test]
     fn test_create_composition() {
         let mut rng = rand::thread_rng();
-        let ratings = (Rating::MIN.0..=Rating::MAX.0).collect::<Vec<_>>();
+        let ratings = (Rating::MIN.0..=Rating::MIN.0 + 10).collect::<Vec<_>>();
 
         let mut random_rating_value = || pick_random(&mut rng, &ratings);
         let mut random_rating = || {
