@@ -43,67 +43,70 @@ impl Queue for CasualGame {
             return None; // not enough players to form teams, no further checks required
         }
 
-        // try to complete subtree from every element in order
-        // return first complete subtree
-        // if one subtree fails, move to another
-        // if all subtrees fail to complete, return None
-        // skip reserved indeces
-        fn _pick_out(
+        type PickOut = Option<(Vec<u32>, Vec<usize>)>;
+
+        fn pick_out(
             queue: &VecDeque<Lobby>,
-            tree_path: &Vec<u32>,
-            indeces: &Vec<usize>,
             tree_nesting: u32,
-            start_idx: usize,
             reserved_indeces: &HashSet<usize>,
-        ) -> Option<(Vec<u32>, Vec<usize>)> {
-            for (i, l) in queue.iter().enumerate() {
-                // cannot pass slice of vector, so depend on start_idx and skip
-                if i < start_idx {
-                    continue;
-                }
-
-                if reserved_indeces.contains(&i) {
-                    continue;
-                }
-
-                let subtree_path = [tree_path.as_slice(), &[l.player_count()]].concat();
-
-                match resolved_path(tree_nesting, &subtree_path) {
-                    PathResolution::Nil => continue,
-                    PathResolution::Complete => {
-                        return Some((subtree_path, [indeces.as_slice(), &[i]].concat()))
+        ) -> PickOut {
+            // try to complete subtree from every element in order
+            // return first complete subtree
+            // if one subtree fails, move to another
+            // if all subtrees fail to complete, return None
+            // skip reserved indeces
+            fn _pick_out(
+                queue: &VecDeque<Lobby>,
+                tree_path: &Vec<u32>,
+                indeces: &Vec<usize>,
+                tree_nesting: u32,
+                start_idx: usize,
+                reserved_indeces: &HashSet<usize>,
+            ) -> PickOut {
+                for (i, l) in queue.iter().enumerate() {
+                    // cannot pass slice of vector, so depend on start_idx and skip
+                    if i < start_idx {
+                        continue;
                     }
-                    PathResolution::Incomplete => {
-                        let result = _pick_out(
-                            queue,
-                            &subtree_path,
-                            &[indeces.as_slice(), &[i]].concat(),
-                            tree_nesting,
-                            start_idx + i + 1,
-                            reserved_indeces,
-                        );
 
-                        if result != None {
-                            return result;
+                    if reserved_indeces.contains(&i) {
+                        continue;
+                    }
+
+                    let subtree_path = [tree_path.as_slice(), &[l.player_count()]].concat();
+
+                    match resolved_path(tree_nesting, &subtree_path) {
+                        PathResolution::Nil => continue,
+                        PathResolution::Complete => {
+                            return Some((subtree_path, [indeces.as_slice(), &[i]].concat()))
+                        }
+                        PathResolution::Incomplete => {
+                            let result = _pick_out(
+                                queue,
+                                &subtree_path,
+                                &[indeces.as_slice(), &[i]].concat(),
+                                tree_nesting,
+                                start_idx + i + 1,
+                                reserved_indeces,
+                            );
+
+                            if result != None {
+                                return result;
+                            }
                         }
                     }
                 }
+                None
             }
-            None
+
+            _pick_out(queue, &vec![], &vec![], tree_nesting, 0, reserved_indeces)
         }
 
         let mut teams: Vec<Vec<usize>> = vec![];
         let mut reserved_indeces = HashSet::new();
 
         for team_size in team_sizes {
-            let result = _pick_out(
-                &self.queue,
-                &vec![],
-                &vec![],
-                *team_size,
-                0,
-                &reserved_indeces,
-            );
+            let result = pick_out(&self.queue, *team_size, &reserved_indeces);
 
             match &result {
                 None => return None, // cannot form requested teams from existing lobbies
@@ -216,10 +219,10 @@ mod tests {
         game.feed(&gen_default_player_lobby(2));
         game.feed(&gen_default_player_lobby(1));
         // 4 3 2 1
-        
+
         assert_take_happy_path(&mut game, &[5, 5]); // -> [4 1] [3 2]
-        // empty
-        
+                                                    // empty
+
         game.feed(&gen_default_player_lobby(3));
         game.feed(&gen_default_player_lobby(4));
         game.feed(&gen_default_player_lobby(4));
@@ -227,19 +230,19 @@ mod tests {
         // 3 4 4 1
 
         assert_take_happy_path(&mut game, &[5]); // -> [4 1]
-        // 3 4
+                                                 // 3 4
 
         game.feed(&gen_default_player_lobby(2));
         // 3 4 2
 
         assert_take_happy_path(&mut game, &[5]); // -> [3 2]
-        // 4
+                                                 // 4
 
         game.feed(&gen_default_player_lobby(1));
         // 4 1
 
         assert_take_happy_path(&mut game, &[5]); // -> [4 1]
-        // empty
+                                                 // empty
 
         assert!(game.queue.is_empty());
     }
