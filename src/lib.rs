@@ -1,5 +1,4 @@
 #![allow(unused_variables, dead_code, unused_mut)]
-pub mod _one_two_two_game;
 pub mod casual_game;
 mod game;
 mod lobby;
