@@ -121,15 +121,20 @@ impl Queue for CasualGame {
 
         let mut lobbies = vec![];
 
-        let mut s: HashSet<usize> = HashSet::new();
+        // as elements are getting removed, indeces need to be readjusted.
+        //
+        // implemented, by keeping track of already popped indeces
+        // and adjusting an untouched index by a number of popped indeces
+        // less in value than the targeted untouched index
+        let mut popped_indeces: HashSet<usize> = HashSet::new();
 
         for indeces in teams {
             let mut team_lobbies = vec![];
 
             for index in indeces {
-                let mov = s.iter().filter(|&&v| v < index).count();
+                let mov = popped_indeces.iter().filter(|&&v| v < index).count();
                 team_lobbies.push(self.queue.remove(index - mov).expect("idx must be present"));
-                s.insert(index);
+                popped_indeces.insert(index);
 
                 if index < self.priority_idx {
                     self.priority_idx -= 1;
