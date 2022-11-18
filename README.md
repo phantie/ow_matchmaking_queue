@@ -14,4 +14,4 @@ Implementation of matchmaking queue, with Overwatch taken as reference.
 - support roles
 
 # Run tests:
-    cargo test
+```cargo test```
