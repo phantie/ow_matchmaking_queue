@@ -24,7 +24,6 @@ impl Queue for CasualGame {
         self.queue.push_back(lobby.clone());
     }
 
-    // TODO test feature
     // priority queue as part of a matchmaking queue
     fn feed_priority(&mut self, lobby: &Lobby) {
         assert!(self.valid_lobby(lobby));
@@ -255,5 +254,24 @@ mod tests {
         // any provided requirement for fulfillment
         game.feed(&gen_default_player_lobby(6));
         assert!(game.take(&[5]).is_none());
+    }
+
+    #[test]
+    fn test_priority_queue() {
+        // TODO write more thourough test
+        // TODO verify correctness of returned lobbies by its' identities
+        let mut game = CasualGame::new();
+
+        game.feed(&gen_default_player_lobby(1));
+        // 1
+        game.feed_priority(&gen_default_player_lobby(2));
+        // 2 1
+        game.feed_priority(&gen_default_player_lobby(3));
+        // 2 3 1
+        game.take(&[5]); // -> [2 3]
+                         // 1
+        game.take(&[1]); // -> [1]
+                         // empty
+        assert!(game.queue.is_empty());
     }
 }
