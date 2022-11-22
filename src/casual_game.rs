@@ -155,10 +155,6 @@ enum PathResolution {
 }
 
 fn resolved_path(tree_nesting: u32, path: &[u32]) -> PathResolution {
-    // TODO remove this requirement for more flexibility
-    assert!(path
-        .iter()
-        .all(|&path_node| path_node >= 1 && path_node <= tree_nesting));
     assert!(path.len() > 0);
 
     match path.into_iter().sum::<u32>().cmp(&tree_nesting) {
@@ -216,7 +212,7 @@ mod tests {
     }
 
     #[test]
-    fn test_casual_game() {
+    fn test_casual_game_cont_scenario() {
         let mut game = CasualGame::new();
 
         game.feed(&gen_default_player_lobby(4));
@@ -250,5 +246,14 @@ mod tests {
                                                  // empty
 
         assert!(game.queue.is_empty());
+    }
+
+    #[test]
+    fn test_casual_game_no_panic_on_any_lobby_length() {
+        let mut game = CasualGame::new();
+        // should not panic when queue has lobbies larger in size than
+        // any provided requirement for fulfillment
+        game.feed(&gen_default_player_lobby(6));
+        assert!(game.take(&[5]).is_none());
     }
 }
