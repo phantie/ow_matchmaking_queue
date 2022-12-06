@@ -1,7 +1,10 @@
 use crate::lobby::Lobby;
 
-pub trait Queue {
-    fn feed(&mut self, lobby: &Lobby);
-    fn feed_priority(&mut self, lobby: &Lobby);
-    fn take(&mut self, team_sizes: &[u32]) -> Option<Vec<Vec<Lobby>>>;
+pub trait Queue<L>
+where
+    L: Lobby,
+{
+    fn feed(&mut self, lobby: &L);
+    fn feed_priority(&mut self, lobby: &L);
+    fn take(&mut self, team_sizes: &[u32]) -> Option<Vec<Vec<L>>>;
 }

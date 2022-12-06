@@ -1,15 +1,23 @@
-use std::collections::HashSet;
-use std::{cmp::Ordering, collections::VecDeque, vec};
-
 use crate::prelude::*;
+use std::{
+    cmp::Ordering,
+    collections::{HashSet, VecDeque},
+    vec,
+};
 
-pub struct CasualGame {
-    queue: VecDeque<Lobby>,
+pub struct CasualGame<L>
+where
+    L: Lobby + Clone,
+{
+    queue: VecDeque<L>,
     // delimiter for priority part of a queue
     priority_idx: usize,
 }
 
-impl CasualGame {
+impl<L> CasualGame<L>
+where
+    L: Lobby + Clone,
+{
     pub fn new() -> Self {
         Self {
             queue: VecDeque::new(),
@@ -18,20 +26,23 @@ impl CasualGame {
     }
 }
 
-impl Queue for CasualGame {
-    fn feed(&mut self, lobby: &Lobby) {
-        assert!(self.valid_lobby(lobby));
+impl<L> Queue<L> for CasualGame<L>
+where
+    L: Lobby + Clone,
+{
+    fn feed(&mut self, lobby: &L) {
+        assert!(self.valid_lobby(lobby), "invalid lobby for this game type");
         self.queue.push_back(lobby.clone());
     }
 
     // priority queue as part of a matchmaking queue
-    fn feed_priority(&mut self, lobby: &Lobby) {
-        assert!(self.valid_lobby(lobby));
+    fn feed_priority(&mut self, lobby: &L) {
+        assert!(self.valid_lobby(lobby), "invalid lobby for this game type");
         self.queue.insert(self.priority_idx, lobby.clone());
         self.priority_idx += 1;
     }
 
-    fn take(&mut self, team_sizes: &[u32]) -> Option<Vec<Vec<Lobby>>> {
+    fn take(&mut self, team_sizes: &[u32]) -> Option<Vec<Vec<L>>> {
         let total_player_amount_in_queue = self
             .queue
             .iter()
@@ -45,7 +56,7 @@ impl Queue for CasualGame {
         type PickOut = Option<(Vec<u32>, Vec<usize>)>;
 
         fn pick_out(
-            queue: &VecDeque<Lobby>,
+            queue: &VecDeque<impl Lobby + Clone>,
             tree_nesting: u32,
             reserved_indeces: &HashSet<usize>,
         ) -> PickOut {
@@ -55,7 +66,7 @@ impl Queue for CasualGame {
             // if all subtrees fail to complete, return None
             // skip reserved indeces
             fn _pick_out(
-                queue: &VecDeque<Lobby>,
+                queue: &VecDeque<impl Lobby + Clone>,
                 tree_path: &Vec<u32>,
                 indeces: &Vec<usize>,
                 tree_nesting: u32,
@@ -163,18 +174,36 @@ fn resolved_path(tree_nesting: u32, path: &[u32]) -> PathResolution {
     }
 }
 
-impl Game for CasualGame {
-    fn valid_lobby(&self, _lobby: &Lobby) -> bool {
-        true
-    }
-
-    fn reduced_roles_lobby(&self, lobby: &Lobby) -> Lobby {
-        lobby.clone()
+impl<L> ValidLobby<L> for CasualGame<L>
+where
+    L: Lobby + Clone,
+{
+    fn valid_lobby(&self, lobby: &L) -> bool {
+        lobby.player_count() > 0
     }
 }
 
 mod tests {
     use super::*;
+
+    #[derive(Debug, Clone)]
+    pub struct TestLobby {
+        // len at least one
+        player_count: u32,
+    }
+
+    impl Lobby for TestLobby {
+        fn player_count(&self) -> u32 {
+            self.player_count
+        }
+    }
+
+    impl TestLobby {
+        fn new(player_count: u32) -> Self {
+            // assert!(player_count > 0);
+            Self { player_count }
+        }
+    }
 
     #[test]
     fn resolve_paths() {
@@ -190,14 +219,10 @@ mod tests {
         assert!(matches!(resolved_path(5, &[3, 3]), PathResolution::Nil));
     }
 
-    fn gen_default_player_lobby(player_number: u32) -> Lobby {
-        let players = (0..player_number)
-            .map(|_| Player::default())
-            .collect::<Vec<_>>();
-        Lobby::new(players).unwrap()
-    }
-
-    fn assert_take_happy_path(game: &mut CasualGame, team_sizes: &[u32]) {
+    fn assert_take_happy_path<L>(game: &mut CasualGame<L>, team_sizes: &[u32])
+    where
+        L: Lobby + Clone,
+    {
         let initial_queue_len = game.queue.len();
         let r = game.take(team_sizes);
         assert!(r.is_some());
@@ -214,31 +239,31 @@ mod tests {
     fn test_casual_game_cont_scenario() {
         let mut game = CasualGame::new();
 
-        game.feed(&gen_default_player_lobby(4));
-        game.feed(&gen_default_player_lobby(3));
-        game.feed(&gen_default_player_lobby(2));
-        game.feed(&gen_default_player_lobby(1));
+        game.feed(&TestLobby::new(4));
+        game.feed(&TestLobby::new(3));
+        game.feed(&TestLobby::new(2));
+        game.feed(&TestLobby::new(1));
         // 4 3 2 1
 
         assert_take_happy_path(&mut game, &[5, 5]); // -> [4 1] [3 2]
                                                     // empty
 
-        game.feed(&gen_default_player_lobby(3));
-        game.feed(&gen_default_player_lobby(4));
-        game.feed(&gen_default_player_lobby(4));
-        game.feed(&gen_default_player_lobby(1));
+        game.feed(&TestLobby::new(3));
+        game.feed(&TestLobby::new(4));
+        game.feed(&TestLobby::new(4));
+        game.feed(&TestLobby::new(1));
         // 3 4 4 1
 
         assert_take_happy_path(&mut game, &[5]); // -> [4 1]
                                                  // 3 4
 
-        game.feed(&gen_default_player_lobby(2));
+        game.feed(&TestLobby::new(2));
         // 3 4 2
 
         assert_take_happy_path(&mut game, &[5]); // -> [3 2]
                                                  // 4
 
-        game.feed(&gen_default_player_lobby(1));
+        game.feed(&TestLobby::new(1));
         // 4 1
 
         assert_take_happy_path(&mut game, &[5]); // -> [4 1]
@@ -252,7 +277,7 @@ mod tests {
         let mut game = CasualGame::new();
         // should not panic when queue has lobbies larger in size than
         // any provided requirement for fulfillment
-        game.feed(&gen_default_player_lobby(6));
+        game.feed(&TestLobby::new(6));
         assert!(game.take(&[5]).is_none());
     }
 
@@ -262,11 +287,11 @@ mod tests {
         // TODO verify correctness of returned lobbies by its' identities
         let mut game = CasualGame::new();
 
-        game.feed(&gen_default_player_lobby(1));
+        game.feed(&TestLobby::new(1));
         // 1
-        game.feed_priority(&gen_default_player_lobby(2));
+        game.feed_priority(&TestLobby::new(2));
         // 2 1
-        game.feed_priority(&gen_default_player_lobby(3));
+        game.feed_priority(&TestLobby::new(3));
         // 2 3 1
         game.take(&[5]); // -> [2 3]
                          // 1

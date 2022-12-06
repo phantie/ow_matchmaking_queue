@@ -2,20 +2,41 @@
 
 use crate::player::Player;
 use crate::rating::Rating;
-use crate::roles::{Role, Roles};
+use crate::roles::{ReduceRoles, Role, Roles};
 
+pub trait Lobby {
+    fn player_count(&self) -> u32;
+}
+
+pub trait ValidLobby<L>
+where
+    L: Lobby,
+{
+    fn valid_lobby(&self, lobby: &L) -> bool;
+}
+
+
+// TODO compile related items into internal crate
 #[derive(Debug, Clone)]
-pub struct Lobby {
+pub struct TestLobby {
     // len at least one
-    pub players: Vec<Player>,
+    players: Vec<Player>,
     rating: bool,
 }
 
-impl Lobby {
-    pub fn player_count(&self) -> u32 {
+impl ReduceRoles for TestLobby {
+    fn reduced_roles_lobby(&self) -> Self {
+        self.clone()
+    }
+}
+
+impl Lobby for TestLobby {
+    fn player_count(&self) -> u32 {
         self.players.len() as u32
     }
+}
 
+impl TestLobby {
     pub fn empty(&self) -> bool {
         self.player_count() == 0
     }
@@ -109,11 +130,11 @@ mod tests {
             .expect("all ranked, so valid comb"),
         };
 
-        let _lobby = Lobby::new(vec![player]).unwrap();
+        let _lobby = TestLobby::new(vec![player]).unwrap();
     }
 
     #[test]
     fn empty_lobby() {
-        assert!(Lobby::new(vec![]).is_none());
+        assert!(TestLobby::new(vec![]).is_none());
     }
 }

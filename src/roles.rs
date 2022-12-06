@@ -1,5 +1,9 @@
 use crate::rating::Rating;
 
+pub trait ReduceRoles {
+    fn reduced_roles_lobby(&self) -> Self;
+}
+
 #[derive(Debug, Copy, Clone)]
 pub struct Roles {
     // at least one of the fields is not NoSelect
