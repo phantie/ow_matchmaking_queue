@@ -5,18 +5,18 @@ use std::{
     vec,
 };
 
-pub struct CasualGame<L>
+pub struct CasualGame<'lobby, L>
 where
-    L: Lobby + Clone,
+    L: Lobby + 'lobby,
 {
-    queue: VecDeque<L>,
+    queue: VecDeque<&'lobby L>,
     // delimiter for priority part of a queue
     priority_idx: usize,
 }
 
-impl<L> CasualGame<L>
+impl<'lobby, L> CasualGame<'lobby, L>
 where
-    L: Lobby + Clone,
+    L: Lobby,
 {
     pub fn new() -> Self {
         Self {
@@ -26,23 +26,23 @@ where
     }
 }
 
-impl<L> Queue<L> for CasualGame<L>
+impl<'lobby, L> Queue<'lobby, L> for CasualGame<'lobby, L>
 where
-    L: Lobby + Clone,
+    L: Lobby,
 {
-    fn feed(&mut self, lobby: &L) {
+    fn feed(&mut self, lobby: &'lobby L) {
         assert!(self.valid_lobby(lobby), "invalid lobby for this game type");
-        self.queue.push_back(lobby.clone());
+        self.queue.push_back(lobby);
     }
 
     // priority queue as part of a matchmaking queue
-    fn feed_priority(&mut self, lobby: &L) {
+    fn feed_priority(&mut self, lobby: &'lobby L) {
         assert!(self.valid_lobby(lobby), "invalid lobby for this game type");
-        self.queue.insert(self.priority_idx, lobby.clone());
+        self.queue.insert(self.priority_idx, lobby);
         self.priority_idx += 1;
     }
 
-    fn take(&mut self, team_sizes: &[u32]) -> Option<Vec<Vec<L>>> {
+    fn take(&mut self, team_sizes: &[u32]) -> Option<Vec<Vec<&'lobby L>>> {
         let total_player_amount_in_queue = self
             .queue
             .iter()
@@ -56,7 +56,7 @@ where
         type PickOut = Option<(Vec<u32>, Vec<usize>)>;
 
         fn pick_out(
-            queue: &VecDeque<impl Lobby + Clone>,
+            queue: &VecDeque<&impl Lobby>,
             tree_nesting: u32,
             reserved_indeces: &HashSet<usize>,
         ) -> PickOut {
@@ -66,7 +66,7 @@ where
             // if all subtrees fail to complete, return None
             // skip reserved indeces
             fn _pick_out(
-                queue: &VecDeque<impl Lobby + Clone>,
+                queue: &VecDeque<&impl Lobby>,
                 tree_path: &Vec<u32>,
                 indeces: &Vec<usize>,
                 tree_nesting: u32,
@@ -174,9 +174,9 @@ fn resolved_path(tree_nesting: u32, path: &[u32]) -> PathResolution {
     }
 }
 
-impl<L> ValidLobby<L> for CasualGame<L>
+impl<'lobby, L> ValidLobby<L> for CasualGame<'lobby, L>
 where
-    L: Lobby + Clone,
+    L: Lobby,
 {
     fn valid_lobby(&self, lobby: &L) -> bool {
         lobby.player_count() > 0
@@ -186,22 +186,21 @@ where
 mod tests {
     use super::*;
 
-    #[derive(Debug, Clone)]
+    #[derive(Debug)]
     pub struct TestLobby {
         // len at least one
         player_count: u32,
     }
 
-    impl Lobby for TestLobby {
-        fn player_count(&self) -> u32 {
-            self.player_count
+    impl TestLobby {
+        fn new(player_count: u32) -> Self {
+            Self { player_count }
         }
     }
 
-    impl TestLobby {
-        fn new(player_count: u32) -> Self {
-            // assert!(player_count > 0);
-            Self { player_count }
+    impl Lobby for TestLobby {
+        fn player_count(&self) -> u32 {
+            self.player_count
         }
     }
 
@@ -219,10 +218,7 @@ mod tests {
         assert!(matches!(resolved_path(5, &[3, 3]), PathResolution::Nil));
     }
 
-    fn assert_take_happy_path<L>(game: &mut CasualGame<L>, team_sizes: &[u32])
-    where
-        L: Lobby + Clone,
-    {
+    fn assert_take_happy_path(game: &mut CasualGame<TestLobby>, team_sizes: &[u32]) {
         let initial_queue_len = game.queue.len();
         let r = game.take(team_sizes);
         assert!(r.is_some());
@@ -235,35 +231,52 @@ mod tests {
         }));
     }
 
+    fn _feed_lobbies(game: &mut CasualGame<TestLobby>, team_sizes: &[u32], priority: bool) {
+        let lobbies: Vec<_> = team_sizes
+            .into_iter()
+            // it's not bad
+            .map(|lobby_size| Box::leak(Box::new(TestLobby::new(*lobby_size))))
+            .map(|lobby| {
+                if priority {
+                    game.feed_priority(&*lobby)
+                } else {
+                    game.feed(&*lobby)
+                }
+            })
+            .collect();
+    }
+
+    fn feed_lobbies(game: &mut CasualGame<TestLobby>, team_sizes: &[u32]) {
+        _feed_lobbies(game, team_sizes, false);
+    }
+
+    fn feed_lobbies_priority(game: &mut CasualGame<TestLobby>, team_sizes: &[u32]) {
+        _feed_lobbies(game, team_sizes, true);
+    }
+
     #[test]
     fn test_casual_game_cont_scenario() {
         let mut game = CasualGame::new();
 
-        game.feed(&TestLobby::new(4));
-        game.feed(&TestLobby::new(3));
-        game.feed(&TestLobby::new(2));
-        game.feed(&TestLobby::new(1));
+        feed_lobbies(&mut game, &[4, 3, 2, 1]);
         // 4 3 2 1
 
         assert_take_happy_path(&mut game, &[5, 5]); // -> [4 1] [3 2]
                                                     // empty
 
-        game.feed(&TestLobby::new(3));
-        game.feed(&TestLobby::new(4));
-        game.feed(&TestLobby::new(4));
-        game.feed(&TestLobby::new(1));
+        feed_lobbies(&mut game, &[3, 4, 4, 1]);
         // 3 4 4 1
 
         assert_take_happy_path(&mut game, &[5]); // -> [4 1]
                                                  // 3 4
 
-        game.feed(&TestLobby::new(2));
+        feed_lobbies(&mut game, &[2]);
         // 3 4 2
 
         assert_take_happy_path(&mut game, &[5]); // -> [3 2]
                                                  // 4
 
-        game.feed(&TestLobby::new(1));
+        feed_lobbies(&mut game, &[1]);
         // 4 1
 
         assert_take_happy_path(&mut game, &[5]); // -> [4 1]
@@ -277,7 +290,7 @@ mod tests {
         let mut game = CasualGame::new();
         // should not panic when queue has lobbies larger in size than
         // any provided requirement for fulfillment
-        game.feed(&TestLobby::new(6));
+        feed_lobbies(&mut game, &[6]);
         assert!(game.take(&[5]).is_none());
     }
 
@@ -287,11 +300,11 @@ mod tests {
         // TODO verify correctness of returned lobbies by its' identities
         let mut game = CasualGame::new();
 
-        game.feed(&TestLobby::new(1));
+        feed_lobbies(&mut game, &[1]);
         // 1
-        game.feed_priority(&TestLobby::new(2));
+        feed_lobbies_priority(&mut game, &[2]);
         // 2 1
-        game.feed_priority(&TestLobby::new(3));
+        feed_lobbies_priority(&mut game, &[3]);
         // 2 3 1
         game.take(&[5]); // -> [2 3]
                          // 1

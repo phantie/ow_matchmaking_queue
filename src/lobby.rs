@@ -15,7 +15,6 @@ where
     fn valid_lobby(&self, lobby: &L) -> bool;
 }
 
-
 // TODO compile related items into internal crate
 #[derive(Debug, Clone)]
 pub struct TestLobby {
